@@ -144,12 +144,12 @@ protected:
 	// Both timers count down at 60hz.
 	Timer delay = 0;
 	Timer sound = 0; // Sound will play iff this value is greater than 1
-	std::thread timer_thread;
+	std::jthread timer_thread;
 
 	unsigned long frame_limit = 0;
 
-	const std::chrono::milliseconds tick_interval = std::chrono::milliseconds(1000 / 60);
-	void runTimers();
+	static constexpr std::chrono::milliseconds tick_interval = std::chrono::milliseconds(1000 / 60);
+	static void runTimers(std::stop_token, Timer &sound, Timer &delay);
 
 	const std::byte getRandomByte();
 

@@ -11,7 +11,7 @@ Chip8ReferenceVm::Chip8ReferenceVm(const std::vector<std::byte>& rom) :
 	random(rd()),
 	pc(ram.cbegin() + 0x200),
 	i(ram.begin()),
-	timer_thread(&Chip8ReferenceVm::runTimers, this)
+	timer_thread(&Chip8ReferenceVm::runTimers, std::ref(this->sound), std::ref(this->delay))
 {
 
 	auto font = make_bytes(
@@ -137,7 +137,6 @@ Chip8ReferenceVm::Chip8ReferenceVm(const std::vector<std::byte>& rom) :
 
 Chip8ReferenceVm::~Chip8ReferenceVm() {
 	this->state = State::Halted;
-	this->timer_thread.join();
 }
 
 constexpr inline auto lo_nybble(const std::byte& byte) {
@@ -609,23 +608,23 @@ void Chip8ReferenceVm::incrementAddressRegister(Value offset) {
 	this->i += offset;
 }
 
-void Chip8ReferenceVm::runTimers() {
+void Chip8ReferenceVm::runTimers(std::stop_token token, Chip8ReferenceVm::Timer &sound, Chip8ReferenceVm::Timer &delay) {
 	auto last_tick = std::chrono::steady_clock::now();
-	while (this->isLive()) {
+	while (!token.stop_requested()) {
 		auto time_since_last_tick = std::chrono::steady_clock::now() - last_tick;
 		do {
-			std::this_thread::sleep_for(this->tick_interval - time_since_last_tick);
+			std::this_thread::sleep_for(tick_interval - time_since_last_tick);
 			time_since_last_tick = std::chrono::steady_clock::now() - last_tick;
-		} while (time_since_last_tick < this->tick_interval);
+		} while (time_since_last_tick < tick_interval);
 
-		last_tick += this->tick_interval;
+		last_tick += tick_interval;
 
-		if (this->sound > 0) {
-			--this->sound;
+		if (sound > 0) {
+			--sound;
 		}
 
-		if (this->delay > 0) {
-			--this->delay;
+		if (delay > 0) {
+			--delay;
 		}
 	}
 }
