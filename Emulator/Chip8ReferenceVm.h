@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
@@ -10,10 +11,9 @@
 #include <span>
 #include <thread>
 
-class Chip8ReferenceVm
-{
+class Chip8ReferenceVm {
 public:
-	Chip8ReferenceVm(const std::vector<std::byte>& rom);
+	Chip8ReferenceVm(const std::span<std::byte> &rom);
 	~Chip8ReferenceVm();
 
 	// Set an upper limit on how many instructions per tick should be emulated (0 [default] disables the limit)
@@ -37,8 +37,8 @@ public:
 	static constexpr uint_fast8_t DISPLAY_WIDTH = 64;
 	static constexpr uint_fast8_t DISPLAY_WIDTH_UNITS = DISPLAY_WIDTH / 8;
 	static constexpr uint_fast8_t DISPLAY_HEIGHT = 32;
-	using Display = std::array<std::byte, DISPLAY_WIDTH_UNITS * DISPLAY_HEIGHT>;
-	const Display& getDisplayBuffer() const;
+	using Display = std::array<std::byte, DISPLAY_WIDTH_UNITS *DISPLAY_HEIGHT>;
+	const Display &getDisplayBuffer() const;
 
 	using Timer = uint_fast8_t;
 	const Timer getSoundTimer() const;
@@ -67,20 +67,20 @@ protected:
 
 	// A 4 bit value
 	using ShortValue = uint_fast8_t;
-	static constexpr inline ShortValue getShortValueLo(const std::byte&);
-	static constexpr inline ShortValue getShortValueHi(const std::byte&);
+	static constexpr inline ShortValue getShortValueLo(const std::byte &);
+	static constexpr inline ShortValue getShortValueHi(const std::byte &);
 
 	// An 8 bit value
 	using Value = uint_fast8_t;
-	static constexpr inline Value getValue(const std::byte&);
+	static constexpr inline Value getValue(const std::byte &);
 
 	// A 12 bit value
 	using LongValue = uint_fast16_t;
-	static constexpr inline LongValue getLongValue(const std::byte& byte_hi, const std::byte& byte_lo);
+	static constexpr inline LongValue getLongValue(const std::byte &byte_hi, const std::byte &byte_lo);
 
 	/**
 	* Jump to a specific address.
-	* 
+	*
 	* @param target Address as a 12 bit integer value, treated as an offset from the start of address space.
 	*/
 	constexpr void jump(LongValue target);
@@ -89,14 +89,14 @@ protected:
 
 	/**
 	* Jump to an address while saving the current location on the call stack for a future return.
-	* 
+	*
 	* @param target Address as a 12 bit integer value, treated as an offset from the start of address space.
 	*/
 	void call(LongValue target);
 
 	/**
 	* Jumps back to the last call site.
-	* 
+	*
 	* No sanity checking is performed, if a program attempts to return more times than it actually performs subroutine calls then this will crash.
 	*/
 	void doReturn();
@@ -108,14 +108,14 @@ protected:
 
 	/**
 	* Set the address register to a specific location.
-	* 
+	*
 	* @param An iterator representing a location in RAM.
 	*/
 	void setAddressRegister(Address);
 
 	/**
 	* Set the address register to a specific location based on an integer value
-	* 
+	*
 	* @param target Address as a 12 bit integer value, treated as an offset from the start of address space.
 	*/
 	void setAddressRegister(LongValue target);
@@ -142,14 +142,14 @@ protected:
 
 	// Timers.
 	// Both timers count down at 60hz.
-	Timer delay = 0;
-	Timer sound = 0; // Sound will play iff this value is greater than 1
+	std::atomic<Timer> delay = 0;
+	std::atomic<Timer> sound = 0; // Sound will play iff this value is greater than 1
 	std::jthread timer_thread;
 
 	unsigned long frame_limit = 0;
 
 	static constexpr std::chrono::milliseconds tick_interval = std::chrono::milliseconds(1000 / 60);
-	static void runTimers(std::stop_token, Timer &sound, Timer &delay);
+	static void runTimers(std::stop_token, std::atomic<Timer> &sound, std::atomic<Timer> &delay);
 
 	const std::byte getRandomByte();
 
@@ -157,7 +157,7 @@ protected:
 	// Key map, each bit corresponds to a key on the hex input device where 1 is pressed and 0 is released.
 	std::bitset<16> keys = 0;
 
-	bool isKeyPressed(const uint_fast8_t& x) const;
+	bool isKeyPressed(const uint_fast8_t &x) const;
 
 	// Display Buffer
 	//  64*32 pixels, with each pixel being a single bit. This could possibly be a bitset but that seems like a headache to copy into.

@@ -7,7 +7,7 @@ std::array<std::byte, sizeof...(Ts)> make_bytes(Ts&&... args) noexcept {
 	return{ std::byte(std::forward<Ts>(args))... };
 }
 
-Chip8ReferenceVm::Chip8ReferenceVm(const std::vector<std::byte>& rom) :
+Chip8ReferenceVm::Chip8ReferenceVm(const std::span<std::byte>& rom) :
 	random(rd()),
 	pc(ram.cbegin() + 0x200),
 	i(ram.begin()),
@@ -389,7 +389,7 @@ void Chip8ReferenceVm::step() {
 		{
 		case std::byte{ 0x07 }:
 			//FX07 Store the current value of the delay timer in register VX
-			this->v.at(x) = static_cast<std::byte>(this->delay);
+			this->v.at(x) = static_cast<std::byte>(this->delay.load());
 			break;
 
 		case std::byte{ 0x0A }:
@@ -608,7 +608,7 @@ void Chip8ReferenceVm::incrementAddressRegister(Value offset) {
 	this->i += offset;
 }
 
-void Chip8ReferenceVm::runTimers(std::stop_token token, Chip8ReferenceVm::Timer &sound, Chip8ReferenceVm::Timer &delay) {
+void Chip8ReferenceVm::runTimers(std::stop_token token, std::atomic<Chip8ReferenceVm::Timer> &sound, std::atomic<Chip8ReferenceVm::Timer> &delay) {
 	auto last_tick = std::chrono::steady_clock::now();
 	while (!token.stop_requested()) {
 		auto time_since_last_tick = std::chrono::steady_clock::now() - last_tick;
